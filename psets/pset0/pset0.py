@@ -280,15 +280,6 @@ class CaesarCipher:
             if count >= 2:
                 return (decrypted, ckey)
         return ("rip", "a")
-    
-
-        #return ("(self.decrypt(ciphertext, maxKey[0]), maxKey[0])")
-
-  # perc = count / len(words)
-            # if perc > self.threshold:
-            #     return (decrypted, ckey)
-            # elif maxKey[1] < perc:
-            #     maxKey = (ckey, perc)  
 
 # Part 2: English dictionary word list
 english_word_list = open("english_words_list.txt",'r').readlines()
