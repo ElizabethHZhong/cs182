@@ -32,7 +32,6 @@ Due September 13, 2023 at 11:59pm
 # Example 1: If n = 0 then the return [1]
 # Example 2: If n = 3 then the return [[1],[1,1],[1,2,1],[1,3,3,1]]
 
-
 def pascals_triangle(n:int)->list:
     # Base Cases
     if n == 0:
@@ -220,15 +219,10 @@ class CaesarCipher:
         encrypted = ""
         key_idx = self.alphabet.index(cipherkey)
         for char in plaintext:
-            isUpper = char.isupper()
-            c = char.lower()
-            if c.isalpha():
-                char_idx = self.alphabet.index(c)
+            if char in self.alphabet:
+                char_idx = self.alphabet.index(char)
                 new_idx = (char_idx + key_idx) % len(self.alphabet)
-                new_char = self.alphabet[new_idx]
-                if isUpper:
-                    new_char = new_char.upper()
-                encrypted += new_char
+                encrypted += self.alphabet[new_idx]
             else:
                 encrypted += char
         return encrypted
@@ -237,14 +231,10 @@ class CaesarCipher:
         decrypted = ""
         key_idx = self.alphabet.index(cipherkey)
         for char in ciphertext:
-            if char.isalpha():
-                isUpper = char.isupper()
-                char_idx = self.alphabet.index(char.lower())
+            if char in self.alphabet:
+                char_idx = self.alphabet.index(char)
                 new_idx = (char_idx - key_idx) % len(self.alphabet)
-                new_char = self.alphabet[new_idx]
-                if isUpper:
-                    new_char = new_char.upper()
-                decrypted += new_char
+                decrypted += self.alphabet[new_idx]
             else:
                 decrypted += char
         return decrypted
@@ -268,10 +258,37 @@ class CaesarCipher:
         return (max_key[2], max_key[1])
     
     def auto_decrypt_bonus(self, ciphertext:str, english_letter_freq_table:dict)->tuple:
-        """Bonus Problem: A faster, more efficient method of auto-decrypting a Caesar Cipher"""
-        #### YOUR CODE HERE ####
-        pass
+        freqs = {}
+        for char in ciphertext:
+            if char.isalpha and char != " ":
+                freqs[char.lower()] = freqs.get(char.lower(), 0) + 1
+        maxFreq = next(iter(freqs))
+        for key in freqs:
+            if freqs[key] > freqs[maxFreq]:
+                maxFreq = key
+        mode_idx = self.alphabet.index(maxFreq)
+        sortGenFreq = sorted(english_letter_freq_table.items(), key=lambda x:x[1], reverse=True)
+        for key in sortGenFreq:
+            key_idx = self.alphabet.index(key[0])
+            ckey = self.alphabet[key_idx - mode_idx]
+            decrypted = self.decrypt(ciphertext, ckey)
+            words = [w for w in decrypted.split(' ')]
+            count = 0
+            for i in range(4):
+                if words[i] in english_word_list:
+                    count += 1
+            if count >= 2:
+                return (decrypted, ckey)
+        return ("rip", "a")
     
+
+        #return ("(self.decrypt(ciphertext, maxKey[0]), maxKey[0])")
+
+  # perc = count / len(words)
+            # if perc > self.threshold:
+            #     return (decrypted, ckey)
+            # elif maxKey[1] < perc:
+            #     maxKey = (ckey, perc)  
 
 # Part 2: English dictionary word list
 english_word_list = open("english_words_list.txt",'r').readlines()
