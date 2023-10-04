@@ -142,7 +142,23 @@ class SearchProblem(abc.ABC):
         raise NotImplementedError
 
 
-ACTION_LIST = ["UP", "DOWN", "LEFT", "RIGHT"]
+ACTION_LIST = ["UP", "RIGHT", "DOWN", "LEFT"]
+DIR = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+
+class State:
+    def __init__(self, row: int, col: int, residences = set(), actions = []):
+        self.r, self.c = row, col
+        self.residences = residences
+        self.actions = actions
+
+    def get_pos(self):
+        return (self.r, self.c)
+
+def print_arr(arr):
+    for i in range(len(arr)):
+        for j in range(len(arr[0])):
+            print(arr[i][j], end=' ')
+        print()
 
 class GridworldSearchProblem(SearchProblem):
     """
@@ -154,23 +170,97 @@ class GridworldSearchProblem(SearchProblem):
     def __init__(self, file):
         """Read the text file and initialize all necessary variables for the search problem"""
         "*** YOUR CODE HERE ***"
-        raise NotImplementedError
+        with open(file) as f:
+            lines = f.readlines()
 
-    def getStartState(self) -> "State":
-        "*** YOUR CODE HERE ***"
-        raise NotImplementedError
+            # initialize row and col dimensions
+            self.rows, self.cols = [int(x) for x in lines[0].split()]
 
-    def isGoalState(self, state: "State") -> bool:
-        "*** YOUR CODE HERE ***"
-        raise NotImplementedError
+            # initalize grid 2D array
+            g = []
+            for i in range(1, len(lines) - 1):
+                g.append([int(x) for x in lines[i].split()])
+            self.grid = g
+        
+            # initalize start position tuple
+            row, col = lines[-1].split()
+            self.start = State(int(row), int(col))
+            if self.grid[int(row)][int(col)] == 1:
+                self.start.residences.add((int(row), int(col)))
 
-    def getSuccessors(self, state: "State") -> List[Tuple["State", str, int]]:
+            # initalize residences
+            residences = set()
+            for r in range(self.rows):
+                for c in range(self.cols):
+                    if self.grid[r][c] == 1:
+                        residences.add((r, c))
+            self.residences = residences
+            
+            print("Problem Description")
+            print("Dimensions: {} x {}".format(self.rows, self.cols))
+            print("Grid")
+            print_arr(self.grid)
+            print("Starting Position: {}".format(self.start.get_pos()))
+
+    def getStartState(self) -> State:
         "*** YOUR CODE HERE ***"
-        raise NotImplementedError
+        return self.start
+
+    def isGoalState(self, state: State) -> bool:
+        "*** YOUR CODE HERE ***"
+        return self.residences == state.residences
+
+    def getSuccessors(self, state: State) -> List[Tuple[List[int], str, int]]:
+        "*** YOUR CODE HERE ***"
+        successors = []
+        for i in range(len(ACTION_LIST)):
+            # get new state
+            rx, cx = DIR[i]
+            nrow, ncol = state.r + rx, state.c + cx
+
+            # add new state to successors if new state is a valid move
+            if (nrow in range(self.rows) and
+                ncol in range(self.cols) and
+                self.grid[nrow][ncol] != -1):
+                new_state = State(nrow, ncol, state.residences, state.actions)
+                # if current position is a residence, update
+                if self.grid[nrow][ncol] == 1:
+                    new_state.residences.add((nrow, ncol))
+                # add the action to get to this new state
+                action = ACTION_LIST[i]
+                new_state.actions.append(action)
+                # add the new state to the successors list
+                successors.append((new_state, action, 1))
+
+        return successors
 
     def getCostOfActions(self, actions: List[str]) -> int:
         "*** YOUR CODE HERE ***"
-        return NotImplementedError
+        return len(actions)
+
+
+def abstracted(problem: SearchProblem, empty) -> List[str]:
+    # initialize pending and visited
+    pending = empty
+    pending.push(problem.getStartState())
+    visited = set()
+
+    while not pending.isEmpty():
+        s = pending.pop()
+        if s.get_pos() in visited:
+            continue
+        else:
+            visited.add(s.get_pos())
+            # if we found the goal state, return actions
+            if problem.isGoalState(s):
+                return s.actions
+            # else we add neighbors to pending and update actions accordingly
+            else:
+                for neighbor in problem.getSuccessors(s):
+                    new_state, _, _ = neighbor
+                    pending.push(new_state)
+
+    return ["No solution"]
 
 
 def depthFirstSearch(problem: SearchProblem) -> List[str]:
@@ -188,13 +278,13 @@ def depthFirstSearch(problem: SearchProblem) -> List[str]:
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
     "*** YOUR CODE HERE ***"
-    raise NotImplementedError
+    return abstracted(problem, Stack())
 
 
 def breadthFirstSearch(problem: SearchProblem) -> List[str]:
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    raise NotImplementedError
+    return abstracted(problem, Queue())
 
 
 def nullHeuristic(state: "State", problem: Optional[GridworldSearchProblem] = None) -> int:
@@ -226,6 +316,7 @@ def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic) -> List[str]:
     """Search the node that has the lowest combined cost and heuristic first.
     This function takes in an arbitrary heuristic (which itself is a function) as an input."""
     "*** YOUR CODE HERE ***"
+    return []
     raise NotImplementedError
 
 
