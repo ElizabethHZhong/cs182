@@ -153,6 +153,9 @@ class State:
 
     def get_pos(self):
         return (self.r, self.c)
+    
+    def __repr__(self) -> str:
+        return str((self.r, self.c))
 
 def print_arr(arr):
     for i in range(len(arr)):
@@ -222,13 +225,20 @@ class GridworldSearchProblem(SearchProblem):
             if (nrow in range(self.rows) and
                 ncol in range(self.cols) and
                 self.grid[nrow][ncol] != -1):
-                new_state = State(nrow, ncol, state.residences, state.actions)
+                # make the new state
+                new_state = State(nrow, 
+                                  ncol, 
+                                  state.residences.copy(), 
+                                  state.actions.copy())
+
                 # if current position is a residence, update
                 if self.grid[nrow][ncol] == 1:
                     new_state.residences.add((nrow, ncol))
+
                 # add the action to get to this new state
                 action = ACTION_LIST[i]
                 new_state.actions.append(action)
+
                 # add the new state to the successors list
                 successors.append((new_state, action, 1))
 
@@ -239,26 +249,73 @@ class GridworldSearchProblem(SearchProblem):
         return len(actions)
 
 
-def abstracted(problem: SearchProblem, empty) -> List[str]:
+def abstracted(problem: SearchProblem, col_type: str) -> List[str]:
+    final = []
     # initialize pending and visited
+    empty = Stack() if col_type == "DFS" else Queue()
+    pending, visited = empty, set()
+
+    # add the starting state to pending and visited
+    start = problem.getStartState()
+    pending.push(start)
+    visited.add((start.get_pos(), frozenset(start.residences)))
+
+    # exhaustively search for the goal state
+    while not pending.isEmpty():
+        # pop next state
+        s = pending.pop()
+        final = s.actions
+
+        # if we found the goal state, return actions
+        if problem.isGoalState(s):
+            print(s.actions)
+            return s.actions
+
+        # else we add neighbors to pending and update actions accordingly
+        neighbors = problem.getSuccessors(s)
+        if col_type == "DFS":
+            neighbors.reverse()
+        for neighbor in neighbors:
+            new_state, _, _ = neighbor
+            state_tuple = (new_state.get_pos(), frozenset(new_state.residences))
+            if state_tuple not in visited:
+                visited.add(state_tuple)
+                pending.push(new_state)
+
+    return final
+
+def pseudoBFS(problem: SearchProblem, col_type: str) -> List[str]:
+    # initialize pending and visited
+    empty = Stack() if col_type == "DFS" else Queue()
     pending = empty
     pending.push(problem.getStartState())
     visited = set()
 
+    # exhaustively search for the goal state
     while not pending.isEmpty():
+        # pop next state
         s = pending.pop()
-        if s.get_pos() in visited:
+
+        # if we've visited, skip, else we add it to visited
+        # print("Checking {}".format(s.get_pos()))
+        res = frozenset(s.residences)
+        if (s.get_pos(), res) in visited:
             continue
-        else:
-            visited.add(s.get_pos())
-            # if we found the goal state, return actions
-            if problem.isGoalState(s):
-                return s.actions
-            # else we add neighbors to pending and update actions accordingly
-            else:
-                for neighbor in problem.getSuccessors(s):
-                    new_state, _, _ = neighbor
-                    pending.push(new_state)
+        visited.add((s.get_pos(), res))
+
+        # if we found the goal state, return actions
+        if problem.isGoalState(s):
+            # print(s.actions)
+            return s.actions
+
+        # else we add neighbors to pending and update actions accordingly
+        neighbors = problem.getSuccessors(s)
+        # print("Current: {}".format(s.get_pos()))
+        if col_type == "DFS":
+            neighbors.reverse()
+        for neighbor in neighbors:
+            new_state, action, _ = neighbor
+            pending.push(new_state)
 
     return ["No solution"]
 
@@ -278,13 +335,13 @@ def depthFirstSearch(problem: SearchProblem) -> List[str]:
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
     "*** YOUR CODE HERE ***"
-    return abstracted(problem, Stack())
+    return pseudoBFS(problem, "DFS")
 
 
 def breadthFirstSearch(problem: SearchProblem) -> List[str]:
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    return abstracted(problem, Queue())
+    return pseudoBFS(problem, "BFS")
 
 
 def nullHeuristic(state: "State", problem: Optional[GridworldSearchProblem] = None) -> int:
@@ -323,17 +380,22 @@ def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic) -> List[str]:
 if __name__ == "__main__":
     ### Sample Test Cases ###
     # Run the following assert statements below to test your function, all should run without raising an assertion error 
-    gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case1.txt") # Test Case 1
-    print(depthFirstSearch(gridworld_search_problem))
-    print(breadthFirstSearch(gridworld_search_problem))
-    print(aStarSearch(gridworld_search_problem))
+    # gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case1.txt") # Test Case 1
+    # print(depthFirstSearch(gridworld_search_problem))
+    # print(breadthFirstSearch(gridworld_search_problem))
+    # print(aStarSearch(gridworld_search_problem))
     
-    gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case2.txt") # Test Case 2
-    print(depthFirstSearch(gridworld_search_problem))
-    print(breadthFirstSearch(gridworld_search_problem))
-    print(aStarSearch(gridworld_search_problem))
+    # gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case2.txt") # Test Case 2
+    # print(depthFirstSearch(gridworld_search_problem))
+    # print(breadthFirstSearch(gridworld_search_problem))
+    # print(aStarSearch(gridworld_search_problem))
     
-    gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case3.txt") # Test Case 3
+    # gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case3.txt") # Test Case 3
+    # print(depthFirstSearch(gridworld_search_problem))
+    # print(breadthFirstSearch(gridworld_search_problem))
+    # print(aStarSearch(gridworld_search_problem))
+
+    gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case4.txt") # Test Case 4
     print(depthFirstSearch(gridworld_search_problem))
     print(breadthFirstSearch(gridworld_search_problem))
     print(aStarSearch(gridworld_search_problem))
