@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-CS 182 Problem Set 1: Python Coding Questions - Fall 2023
-Due October 4, 2023 at 11:59pm
+CS 182 Problem Set 1: Python Coding Questions - Fall 2022
+Due September 27, 2022 at 11:59pm
 """
 
 ### Package Imports ###
@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple
 
 
 #### Coding Problem Set General Instructions - PLEASE READ ####
-# 1. All code should be written in python 3.7 or higher to be compatible with the autograder
+# 1. All code should be written in python 3.6 or higher to be compatible with the autograder
 # 2. Your submission file must be named "pset1.py" exactly
 # 3. No additional outside packages can be referenced or called, they will result in an import error on the autograder
 # 4. Function/method/class/attribute names should not be changed from the default starter code provided
@@ -144,13 +144,6 @@ class SearchProblem(abc.ABC):
 
 ACTION_LIST = ["UP", "DOWN", "LEFT", "RIGHT"]
 
-def print_arr(arr):
-    for i in range(len(arr)):
-        for j in range(len(arr[0])):
-            num = arr[i][j]
-            print(num if num < 0 else f' {num}', end=' ')
-        print()
-
 class GridworldSearchProblem(SearchProblem):
     """
     Fill in these methods to define the grid world search as a search problem.
@@ -161,76 +154,75 @@ class GridworldSearchProblem(SearchProblem):
     def __init__(self, file):
         """Read the text file and initialize all necessary variables for the search problem"""
         "*** YOUR CODE HERE ***"
-        with open(file) as f:
-            lines = f.readlines()
-            
-            # initialize row and col dim
-            self.rows, self.cols = [int(x) for x in lines[0].split()]
-
-            # grid
-            g = []
-            for i in range(1, len(lines) - 1):
-                g.append([int(x) for x in lines[i].split()])
-            self.grid = g
-
-            # start
-            row, col = lines[-1].split()
-            self.start = (int(row), int(col))
-
-            # residences
-            res = set()
-            for r in range(self.rows):
-                for c in range(self.cols):
-                    if self.grid[r][c] == 1:
-                        res.add((r, c))
-            self.residences = res
+        f = open(file, "r")
+        dim = f.readline()
+        coords = list(map(int, dim.strip().split(' ')))
+        self.rows = coords[0]
+        self.columns = coords[1] #could be annoying if rows >= 10
+        self.map = []
+        for i in range(self.rows):
+            line = f.readline()
+            self.map.append(list(map(int, line.strip().split(' '))))
+        start = f.readline()
+        f.close()
+        startcoords = list(map(int, start.strip().split(' ')))
+        startx = startcoords[0]
+        starty = startcoords[1]
+        self.start = (startx, starty)
+        self.residences = set()
+        for row in range(self.rows):
+            for col in range(self.columns): 
+                if self.map[row][col] == 1:
+                    self.residences.add((row,col))
+        # raise NotImplementedError
 
     def getStartState(self) -> tuple:
         "*** YOUR CODE HERE ***"
-        start_pos = self.start
+        pos = self.start
         res = set()
-        if start_pos in self.residences:
-            res.add(start_pos)
-        return {"pos": start_pos, "res": res}
+        if pos in self.residences:
+            res.add(pos)
+        start_state = {"pos":pos, "res":res}
+        return start_state
 
     def isGoalState(self, state: tuple) -> bool:
         "*** YOUR CODE HERE ***"
-        return len(state["res"]) == len(self.residences)
+        if len(state["res"]) == len(self.residences): 
+            return True 
+        return False
+        # raise NotImplementedError
 
-    def getSuccessors(self, state: tuple) -> List[Tuple["State", str, int]]:
+    def getSuccessors(self, state: dict) -> List[Tuple[dict, str, int]]:
         "*** YOUR CODE HERE ***"
-        successors = []
-        
-        # get the new position
-        r, c = state["pos"]
+        succ = []
+        oldrow = state["pos"][0]
+        oldcol = state["pos"][1]
         for action in ACTION_LIST:
-            nr, nc = r, c
+            newrow = oldrow
+            newcol = oldcol
             if action == "UP":
-                nr -= 1
+                newrow -= 1
             elif action == "DOWN":
-                nr += 1
+                newrow += 1
             elif action == "LEFT":
-                nc -= 1
+                newcol -= 1
             else:
-                nc += 1
-
-            # add the new state accordingly
-            if (nr in range(self.rows) and nc in range(self.cols)):
-                new_state = {"pos": (nr, nc), "res": state["res"].copy()}
-                # residence case
-                if self.grid[nr][nc] == 1:
-                    new_state["res"].add((nr, nc))
-                # obstacle case
-                elif self.grid[nr][nc] == -1:
-                    continue
-                successors.append((new_state, action, 1))
-
-        return successors
+                newcol += 1
+            if newcol >= 0 and newcol < self.columns and newrow >= 0 and newrow < self.rows:
+                newstate = {"pos":(newrow, newcol),"res": state["res"].copy()}
+                if self.map[newrow][newcol] == 1: # is a residence
+                    if (newrow,newcol) not in state["res"]: # new residence
+                        newstate["res"].add((newrow,newcol)) # add to visited residents
+                elif self.map[newrow][newcol] == -1:
+                    continue # skip over this loop iteration
+                succ.append((newstate, action, 1))
+        return succ
 
 
     def getCostOfActions(self, actions: List[str]) -> int:
         "*** YOUR CODE HERE ***"
         return len(actions)
+        # return NotImplementedError
 
 
 def depthFirstSearch(problem: SearchProblem) -> List[str]:
@@ -246,59 +238,56 @@ def depthFirstSearch(problem: SearchProblem) -> List[str]:
     print("Start:", problem.getStartState())
     print("Is the start a goal?", problem.isGoalState(problem.getStartState()))
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
+    
     """
     "*** YOUR CODE HERE ***"
-    pending, visited = Stack(), set()
+
+    stack = Stack()
+    visited = []
     start = problem.getStartState()
-    pending.push((start, []))
-
-    while not pending.isEmpty():
-        s, actions = pending.pop()
-
-        if problem.isGoalState(s):
-            return actions
-        
-        state_tuple = (s["pos"], frozenset(s["res"]))
-        if state_tuple not in visited:
-            visited.add(state_tuple)
-
-            for neighbor in problem.getSuccessors(s):
-                new_state, action, _ = neighbor
-                new_actions = []
-                if actions:
-                    new_actions = actions.copy()
-                new_actions.append(action)
-                pending.push((new_state, new_actions))
-
-    raise Exception("Rip")
+    stack.push({"state":start, "actions":[]})
+    while not stack.isEmpty():
+        pop = stack.pop()
+        state = pop["state"]
+        if problem.isGoalState(state):
+            return pop["actions"]
+        if state not in visited:
+            visited.append(state)
+            for succ in problem.getSuccessors(state):
+                newstate = succ[0]
+                action = succ[1]
+                actions = []
+                if pop["actions"] is not None:
+                    actions = pop["actions"].copy()
+                actions.append(action)
+                stack.push({"state":newstate, "actions":actions})
+    raise Exception("No goal state found")
 
 
 def breadthFirstSearch(problem: SearchProblem) -> List[str]:
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    pending, visited = Queue(), set()
+
+    queue = Queue()
     start = problem.getStartState()
-    pending.push((start, []))
-
-    while not pending.isEmpty():
-        s, actions = pending.pop()
-
-        if problem.isGoalState(s):
-            return actions
-        
-        state_tuple = (s["pos"], frozenset(s["res"]))
-        if state_tuple not in visited:
-            visited.add(state_tuple)
-
-            for neighbor in problem.getSuccessors(s):
-                new_state, action, _ = neighbor
-                new_actions = []
-                if actions:
-                    new_actions = actions.copy()
-                new_actions.append(action)
-                pending.push((new_state, new_actions))
-
-    raise Exception("Rip")
+    visited = [start]
+    queue.push({"state":start, "actions":[]})
+    while not queue.isEmpty():
+        pop = queue.pop()
+        state = pop["state"]
+        if problem.isGoalState(state):
+            return pop["actions"]
+        for succ in problem.getSuccessors(state):
+            newstate = succ[0]
+            if newstate not in visited:
+                visited.append(newstate)
+                action = succ[1]
+                actions = []
+                if pop["actions"] is not None:
+                    actions = pop["actions"].copy()
+                actions.append(action)
+                queue.push({"state":newstate, "actions":actions})
+    raise Exception("No goal state found")    
 
 
 def nullHeuristic(state: "State", problem: Optional[GridworldSearchProblem] = None) -> int:
@@ -309,83 +298,85 @@ def nullHeuristic(state: "State", problem: Optional[GridworldSearchProblem] = No
     return 0
 
 
-def simpleHeuristic(state: "State", problem: Optional[GridworldSearchProblem] = None) -> int:
+def simpleHeuristic(state: dict, problem: Optional[GridworldSearchProblem] = None) -> int:
     """
     This heuristic returns the number of residences that you have not yet visited.
     """
-    return len(problem.residences) - len(state["res"])
+    total = len(problem.residences)
+    visited = len(state["res"])
+    todo = total - visited
+    return todo
 
 
-def customHeuristic(state: "State", problem: Optional[GridworldSearchProblem] = None) -> int:
+def customHeuristic(state: dict, problem: Optional[GridworldSearchProblem] = None) -> int:
     """
     Create your own heurstic. The heuristic should
         (1) reduce the number of states that we need to search (tested by the autograder by counting the number of
             calls to GridworldSearchProblem.getSuccessors)
         (2) be admissible and consistent
     """
-    # return Manhattan distance between state and closest unvisited residence
-    min_dist = float('inf')
-    for res in problem.residences:
-        resx, resy = res
-        sx, sy = state["pos"]
-        d = abs(resx - sx) + abs(resy - sy)
-        if d < min_dist and res not in state["res"]:
-            min_dist = d
-    if min_dist == float('inf'):
-        return 0
-    return min_dist
+    if len(state["res"]) == len(problem.residences):
+        minDist = 0
+    else: 
+        minDist = problem.rows + problem.columns
+        for res in problem.residences:
+            if res not in state["res"]: 
+                dist = abs(state["pos"][0]-res[0]) + abs(state["pos"][1]-res[1])
+                if dist < minDist:
+                    minDist = dist
+    return minDist
+    
 
-def getPriority(heuristic, state, problem, cost):
-    return heuristic(state, problem) + cost
+
+
 
 def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic) -> List[str]:
     """Search the node that has the lowest combined cost and heuristic first.
     This function takes in an arbitrary heuristic (which itself is a function) as an input."""
     "*** YOUR CODE HERE ***"
-    pending, visited = PriorityQueue(), set()
+
+    queue = PriorityQueue()
     start = problem.getStartState()
-    pending.update((start, []), heuristic(start, problem))
+    visited = []
+    queue.update({"state":start, "actions":[]},heuristic(start, problem))
+    while not queue.isEmpty():
+        pop = queue.pop()
+        state = pop["state"]
+        if state not in visited:
+            visited.append(state)
+        if problem.isGoalState(state):
+            return pop["actions"]
+        for succ in problem.getSuccessors(state):
+            newstate = succ[0]
+            if newstate not in visited:
+                visited.append(newstate)
+                action = succ[1]
+                actions = []
+                if pop["actions"] is not None:
+                    actions = pop["actions"].copy()
+                actions.append(action)
+                g = problem.getCostOfActions(actions)
+                cost = g + heuristic(newstate,problem)
+                queue.update({"state":newstate, "actions":actions},cost)
+    raise Exception("No goal state found")      
 
-    while not pending.isEmpty():
-        s, actions = pending.pop()
 
-        state_tuple = (s["pos"], frozenset(s["res"]))
-        if state_tuple not in visited:
-            visited.add(state_tuple)
-
-        if problem.isGoalState(s):
-            return actions
-
-        for neighbor in problem.getSuccessors(s):
-            new_state, action, _ = neighbor
-            new_tuple_state = (new_state["pos"], frozenset(new_state["res"]))
-            if new_tuple_state not in visited:
-                visited.add(new_tuple_state)
-                new_actions = []
-                if actions:
-                    new_actions = actions.copy()
-                new_actions.append(action)
-                g = problem.getCostOfActions(new_actions)
-                f = g + heuristic(new_state, problem)
-                pending.update((new_state, new_actions), f)
-
-    raise Exception("Rip")
 
 
 if __name__ == "__main__":
     ### Sample Test Cases ###
-    # Run the following assert statements below to test your function, all should run without raising an assertion error 
+    # Run the following statements below to test the running of your program
     gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case1.txt") # Test Case 1
-    print("DFS", depthFirstSearch(gridworld_search_problem))
-    print("BFS", breadthFirstSearch(gridworld_search_problem))
-    print("A Star", aStarSearch(gridworld_search_problem))
+    print(depthFirstSearch(gridworld_search_problem))
+    # print(breadthFirstSearch(gridworld_search_problem))
+    # print(aStarSearch(gridworld_search_problem, simpleHeuristic))
     
     gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case2.txt") # Test Case 2
-    print("DFS", depthFirstSearch(gridworld_search_problem))
-    print("BFS", breadthFirstSearch(gridworld_search_problem))
-    print("A Star", aStarSearch(gridworld_search_problem))
+    print(depthFirstSearch(gridworld_search_problem))
+    # print(breadthFirstSearch(gridworld_search_problem))
+    # print(aStarSearch(gridworld_search_problem, simpleHeuristic))
     
     gridworld_search_problem = GridworldSearchProblem("pset1_sample_test_case3.txt") # Test Case 3
-    print("DFS", depthFirstSearch(gridworld_search_problem))
-    print("BFS", breadthFirstSearch(gridworld_search_problem))
-    print("A Star", aStarSearch(gridworld_search_problem))
+    print(depthFirstSearch(gridworld_search_problem))
+    # print(breadthFirstSearch(gridworld_search_problem))
+    # print(aStarSearch(gridworld_search_problem, simpleHeuristic))
